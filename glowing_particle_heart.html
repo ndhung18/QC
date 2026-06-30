@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiệu Ứng Trái Tim Hạt Ánh Sáng - Bão Hạt Neon</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #100013;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .title {
+            color: #ffb3e6;
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin: 0;
+            opacity: 0.9;
+            text-shadow: 0 0 18px rgba(255, 125, 206, 0.85), 0 0 38px rgba(255, 45, 186, 0.5);
+            animation: pulseGlow 2.8s ease-in-out infinite alternate;
+        }
+
+        .subtitle {
+            color: rgba(255, 182, 255, 0.65);
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+
+        @keyframes pulseGlow {
+            0% {
+                opacity: 0.7;
+                text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+            }
+
+            100% {
+                opacity: 0.95;
+                text-shadow: 0 0 20px rgba(0, 243, 255, 0.8), 0 0 35px rgba(189, 0, 255, 0.6);
+            }
+        }
+
+        /* Hint for user interaction */
+        .interactive-hint {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 12px;
+            letter-spacing: 1px;
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 1s;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="interactive-hint" id="hint">Di chuyển chuột hoặc chạm để tương tác với các hạt</div>
+    <canvas id="particleCanvas"></canvas>
+    <div class="container">
+        <h1 class="title">Chúc Quỳnh Chi có chuyến công tác, du lịch vui vẻ tại Trung Quốc !!!</h1>
+        <!-- <div class="subtitle">Được tạo bởi hiệu ứng HTML5 Canvas Particle</div> -->
+    </div>
+
+    <script>
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        const hint = document.getElementById('hint');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        let mouse = { x: null, y: null, radius: 90 };
+
+        // Hide hint after 5 seconds or on mouse move
+        const hideHint = () => {
+            hint.style.opacity = 0;
+            window.removeEventListener('mousemove', hideHint);
+            window.removeEventListener('touchstart', hideHint);
+        };
+        window.addEventListener('mousemove', hideHint);
+        window.addEventListener('touchstart', hideHint);
+        setTimeout(hideHint, 6000);
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                mouse.x = e.touches[0].clientX;
+                mouse.y = e.touches[0].clientY;
+            }
+        });
+
+        window.addEventListener('touchend', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            calculateHeartPoints();
+        });
+
+        // Parametric Heart Shape Formula
+        function getHeartPoint(t) {
+            return {
+                x: 16 * Math.pow(Math.sin(t), 3),
+                y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))
+            };
+        }
+
+        const heartPoints = [];
+        let heartScale = 0;
+        const heartBeatSpeed = 0.006;
+        const heartBeatAmount = 0.1;
+
+        function calculateHeartPoints() {
+            heartPoints.length = 0;
+            // Adaptive scale depending on screen size, slightly smaller for a more compact heart
+            heartScale = Math.min(width, height) / 40;
+
+            // Generate layered heart points: outline, mid-shell, and softer core
+            for (let t = 0; t < Math.PI * 2; t += 0.006) {
+                const point = getHeartPoint(t);
+                heartPoints.push({ x: point.x, y: point.y, depth: 0.12 });
+
+                // Outer shell layer: a softer glow around the edge
+                for (let i = 0; i < 2; i++) {
+                    const outerFactor = 0.92 + Math.random() * 0.08;
+                    heartPoints.push({
+                        x: point.x * outerFactor,
+                        y: point.y * outerFactor,
+                        depth: 0.22
+                    });
+                }
+
+                // Middle layer: fill the body of the heart
+                for (let i = 0; i < 5; i++) {
+                    const midFactor = Math.sqrt(Math.random()) * 0.7 + 0.25;
+                    heartPoints.push({
+                        x: point.x * midFactor,
+                        y: point.y * midFactor,
+                        depth: 0.52
+                    });
+                }
+
+                // Inner core: đỡ đặc hơn, tản ra và chỉ làm bóng trung tâm
+                for (let i = 0; i < 2; i++) {
+                    const innerFactor = Math.sqrt(Math.random()) * 0.35 + 0.25;
+                    heartPoints.push({
+                        x: point.x * innerFactor,
+                        y: point.y * innerFactor,
+                        depth: 0.88
+                    });
+                }
+            }
+        }
+
+        class Particle {
+            constructor() {
+                this.x = width / 2 + (Math.random() - 0.5) * heartScale * 1.2;
+                this.y = height / 2 + (Math.random() - 0.5) * heartScale * 1.2;
+                this.size = Math.random() * 1.8 + 0.8;
+                this.baseX = this.x;
+                this.baseY = this.y;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = Math.random() * 0.012 + 0.008;
+                this.friction = Math.random() * 0.03 + 0.94;
+                this.pulsePhase = Math.random() * Math.PI * 0.3;
+
+                // Pink-centered palette for a brighter heart
+                const colorRand = Math.random();
+                if (colorRand < 0.38) {
+                    this.color = { r: 255, g: 125, b: 210 }; // Hot Pink
+                } else if (colorRand < 0.72) {
+                    this.color = { r: 255, g: 60, b: 170 }; // Magenta
+                } else if (colorRand < 0.90) {
+                    this.color = { r: 255, g: 185, b: 230 }; // Soft Pink
+                } else {
+                    this.color = { r: 255, g: 245, b: 255 }; // Sparkling White Pink
+                }
+
+                this.alpha = Math.random() * 0.45 + 0.5;
+                this.selectTarget();
+            }
+
+            selectTarget() {
+                const target = heartPoints[Math.floor(Math.random() * heartPoints.length)];
+                this.targetRelX = target.x;
+                this.targetRelY = target.y;
+                this.depth = target.depth || 0.5;
+                this.size = 0.8 + this.depth * 1.5 + Math.random() * 0.35;
+                this.alpha = 0.35 + this.depth * 0.45 + Math.random() * 0.2;
+            }
+
+            update() {
+                const heartbeat = 1 + Math.sin(Date.now() * heartBeatSpeed) * heartBeatAmount;
+                const targetX = width / 2 + this.targetRelX * heartScale * heartbeat;
+                const targetY = height / 2 + this.targetRelY * heartScale * heartbeat;
+
+                // Physics moving towards target heart points
+                let dx = targetX - this.x;
+                let dy = targetY - this.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                // If arrived close to target, move directly to target and choose a new point
+                if (distance < 4) {
+                    this.x = targetX;
+                    this.y = targetY;
+                    if (Math.random() < 0.015) {
+                        this.selectTarget();
+                    }
+                } else {
+                    const pulse = 1 + Math.sin(Date.now() * heartBeatSpeed + this.pulsePhase) * 0.04;
+                    // Acceleration toward target with heartbeat-like pulse
+                    this.vx += dx * this.speed * 0.035 * pulse;
+                    this.vy += dy * this.speed * 0.035 * pulse;
+
+                    // Apply drag and update position
+                    this.vx *= this.friction;
+                    this.vy *= this.friction;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                }
+
+                // Mouse Interaction (Push/Repulsion effect)
+                if (mouse.x !== null && mouse.y !== null) {
+                    let mDx = this.x - mouse.x;
+                    let mDy = this.y - mouse.y;
+                    let mDist = Math.sqrt(mDx * mDx + mDy * mDy);
+                    if (mDist < mouse.radius) {
+                        let force = (mouse.radius - mDist) / mouse.radius;
+                        // Push away instantly and add a bright swirl effect
+                        this.x += (mDx / mDist) * force * 7;
+                        this.y += (mDy / mDist) * force * 7;
+                        this.vx += (mDx / mDist) * force * 0.8;
+                        this.vy += (mDy / mDist) * force * 0.8;
+                    }
+                }
+
+                // Subtle twinkle effect
+                if (Math.random() < 0.05) {
+                    this.alpha += (Math.random() - 0.5) * 0.2;
+                    if (this.alpha < 0.2) this.alpha = 0.2;
+                    if (this.alpha > 1) this.alpha = 1;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particles = [];
+        const maxParticles = 2008;
+
+        // Init everything
+        calculateHeartPoints();
+        for (let i = 0; i < maxParticles; i++) {
+            particles.push(new Particle());
+        }
+
+        // Animation Loop
+        function animate() {
+            // Motion blur trail effect using a semi-transparent black overlay
+            ctx.fillStyle = 'rgba(3, 3, 12, 0.14)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Update and draw all particles
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+
+            // Draw fine luminous branches connecting nearby particles
+            // to intensify the glowing heart shape
+            ctx.lineWidth = 0.45;
+            for (let i = 0; i < 75; i++) {
+                const p1 = particles[Math.floor(Math.random() * particles.length)];
+                const p2 = particles[Math.floor(Math.random() * particles.length)];
+
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 42) {
+                    const alphaLine = (1 - dist / 42) * 0.22;
+                    ctx.strokeStyle = `rgba(255, 90, 220, ${alphaLine})`;
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+
+</html>
